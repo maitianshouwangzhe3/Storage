@@ -166,6 +166,11 @@ static void grammar_parser(char* buffer, storage_message*  message) {
                 message->cmd = PING;
             }
             break;
+        case QUIT:
+            {
+
+            }
+            break;
     default:
         message->cmd = ERROR;
         break;

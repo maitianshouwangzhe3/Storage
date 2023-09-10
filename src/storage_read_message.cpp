@@ -274,6 +274,10 @@ static void storage_select(storage_message* q){
         case PING:
             strcpy(q->buf, PANG);
             break;
+        case QUIT:
+            strcpy(q->buf, "Bey");
+            Storage::set_isClose();
+            break;
     default:
         strcpy(q->buf, null);
         break;
@@ -306,10 +310,19 @@ void* storage_read_message(void* arg){
         else if(isClose){
             break;
         }
+        else{
+            usleep(0);
+        }
     }
 }
 
 void storage_read_thread_close(){
-    isClose = true;
-    resource::DstoryInstance();
+    while (true)
+    {
+        if(rq.size <= 0){
+            isClose = true;
+            resource::DstoryInstance();
+            return;
+        }
+    }    
 }

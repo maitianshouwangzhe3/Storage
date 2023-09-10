@@ -21,6 +21,9 @@ void* storage_write_message(void* arg){
         else if(isClose){
             break;
         }
+        else {
+            usleep(0);
+        }
     }
 }
 
@@ -38,5 +41,10 @@ void storage_insert_write_message(storage_message* q){
 }
 
 void storage_write_thread_close(){
-    isClose = true;
+    while(true){
+        if(wq.size <= 0){
+            isClose = true;
+            return;
+        }
+    }
 }

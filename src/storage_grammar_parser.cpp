@@ -1,4 +1,16 @@
 #include "storage_grammar_parser.h"
+#include "storage_read_message.h"
+#include "storage_aof.h"
+#include <sys/socket.h>
+#include <netinet/in.h>
+#include <arpa/inet.h>
+#include <unistd.h>
+#include <string.h>
+#include <string>
+#include <vector>
+#include <unordered_map>
+#include <pthread.h>
+#include <stdio.h>
 
 std::unordered_map<int, storage_message*> message_map;
 pthread_mutex_t mtx;
@@ -15,6 +27,21 @@ static std::unordered_map<std::string, type_> hash_map = {
     {"ping", type_::PING},
     {"quit", type_::QUIT}
 };
+
+storage_message::storage_message() {
+
+}
+
+storage_message::~storage_message(){
+    auto cur = list_kv->next;
+    while (list_kv)
+    {
+        delete list_kv;
+        list_kv = nullptr;
+        list_kv = cur;
+        cur = cur->next;
+    } 
+}
 
 storage_message* storage_message_init(uint32_t fd) {
     storage_message* message = new storage_message();
@@ -39,14 +66,6 @@ list_key_value* storage_message_kv_init(const char* key, const char* value) {
 void storage_message_destruction(int fd) {
     auto message = message_map[fd];
     message_map.erase(fd);
-    list_key_value* cur = message->list_kv;
-    while(message->list_kv) {
-        cur = message->list_kv->next;
-        delete message->list_kv;
-        message->list_kv = cur;
-    }
-    delete message;
-    message = nullptr;
     close(fd);
 }
 
@@ -77,6 +96,7 @@ static void grammar_parser(char* buffer, storage_message*  message) {
                     break;
                 }
                 message->list_kv = storage_message_kv_init(pool[1].c_str(), pool[2].c_str());
+                storage_data_persistence(buffer, strlen(buffer) + 1);
             }
             break;
         case GET:
@@ -95,6 +115,7 @@ static void grammar_parser(char* buffer, storage_message*  message) {
                     break;
                 }
                 message->list_kv = storage_message_kv_init(pool[1].c_str(), nullptr);
+                storage_data_persistence(buffer, strlen(buffer) + 1);
             }
             break;
         case ZADD:
@@ -108,7 +129,8 @@ static void grammar_parser(char* buffer, storage_message*  message) {
                         continue;
                     }
                     message->list_kv = storage_message_kv_init(pool[i].c_str(), pool[i + 1].c_str());
-                }                
+                }
+                storage_data_persistence(buffer, strlen(buffer) + 1);                
             }
             break;
         case ZDEL:
@@ -118,6 +140,7 @@ static void grammar_parser(char* buffer, storage_message*  message) {
                     break;
                 }
                 message->list_kv = storage_message_kv_init(pool[1].c_str(), nullptr);
+                storage_data_persistence(buffer, strlen(buffer) + 1);
             }
             break;
         case ZGET:
@@ -137,6 +160,7 @@ static void grammar_parser(char* buffer, storage_message*  message) {
                 }
                 message->key = const_cast<char*>(pool[1].c_str());
                 message->list_kv = storage_message_kv_init(pool[2].c_str(), pool[3].c_str());
+                storage_data_persistence(buffer, strlen(buffer) + 1);
             }
             break;
         case ZTROY:
@@ -147,6 +171,7 @@ static void grammar_parser(char* buffer, storage_message*  message) {
                 }
                 message->key = const_cast<char*>(pool[1].c_str());
                 message->list_kv = storage_message_kv_init(pool[2].c_str(), nullptr);
+                storage_data_persistence(buffer, strlen(buffer) + 1);
             }
             break;
         case QUERY:

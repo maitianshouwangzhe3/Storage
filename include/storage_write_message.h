@@ -2,16 +2,9 @@
 #define __STORAGE_WRITE_MESSAGE_H__
 
 #include "public.h"
-#include "storage.h"
-#include "storage_epoller.h"
-#include <stdint.h>
-#include <sys/socket.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <string.h>
+
 #include <queue>
-#include <pthread.h>
-#include <iostream>
+
 
 struct write_queue {
     std::queue<storage_message*> q;

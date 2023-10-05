@@ -2,13 +2,7 @@
 #define __STORAGE_AVLTREE_H__
 
 #include "public.h"
-#include <set>
-#include <stdint.h>
-#include <cassert>
-#include <stdio.h>
-#include <stdlib.h>
-#include <algorithm>
-#include <string>
+
 
 //添加节点
 bool avl_add(Container* c, uint32_t key, const char* val);

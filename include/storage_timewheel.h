@@ -50,8 +50,8 @@ typedef struct link_list_t{
 
 class TimerWheel{
 public:
-    TimerWheel();
-    ~TimerWheel();
+    static TimerWheel* get_instance();
+    static void dstory_instance();
 
     unsigned int add(int timer, std::function<void(void*)> callback, void* arg = nullptr);
     bool del(unsigned int id);
@@ -64,6 +64,9 @@ public:
     void del(timer_node* node);
 
 private:
+    TimerWheel();
+    ~TimerWheel();
+
     bool add_node(timer_node* node);
     void link(link_list* m_near, timer_node* node);
     uint64_t get_time();
@@ -84,6 +87,8 @@ private:
     uint32_t current_time;
     bool state;
     std::unordered_map<unsigned int, timer_node*> hashmap;
+
+    static TimerWheel* timer;
 };
 
 #endif

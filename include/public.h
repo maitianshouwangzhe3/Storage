@@ -124,6 +124,9 @@ struct storage_message{
     char* limit2;
     uint32_t time;
     char buf[256];
+
+    storage_message();
+    ~storage_message();
 };
 
 

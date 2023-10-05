@@ -1,10 +1,30 @@
 #include "storage.h"
+#include "storage_avltree.h"
+#include "storage_hashtable.h"
+#include "storage_orderedlist.h"
+#include "storage_resource.h"
+#include "storage_grammar_parser.h"
+#include "storage_write_message.h"
+#include "storage_read_message.h"
+#include "storage_aof.h"
+
+#include <fcntl.h>       // fcntl(
+#include <unistd.h>      // close()
+#include <assert.h>
+#include <errno.h>
+
+#include <string>
+#include <iostream>
+#include <functional>
+#include <stdio.h>
+#include <math.h>
+#include <memory>
 
 bool Storage::isClose = false;
 
 Storage::Storage(int pthrad_size, int port_size, int mode){
     thread_pool = PthreadPool::GetInstance();
-    m_timer = new TimerWheel();
+    m_timer = TimerWheel::get_instance();
     lock = new spinlock();
     epoller_ = Epoller::getinstance();
     
@@ -19,6 +39,9 @@ Storage::Storage(int pthrad_size, int port_size, int mode){
 Storage::~Storage(){
     PthreadPool::DestroyInstance();
     Epoller::DstroyInstance(); 
+    TimerWheel::dstory_instance();
+
+    m_timer = nullptr;
 
     for(auto port : port_) {
         close(port);
@@ -29,11 +52,6 @@ Storage::~Storage(){
         close(fd);
     }
     listenFd_.clear();
-    
-    if(m_timer) {
-        delete m_timer;
-        m_timer = nullptr;
-    }
 
     if(lock){
         delete lock;
@@ -102,6 +120,7 @@ void Storage::run(){
 
     storage_rq_init();
     storage_wq_init();
+    storage_init_data_persistence();
     thread_pool->push(std::bind(&Storage::run_timer, this));
 
     while(!isClose){
@@ -123,8 +142,10 @@ void Storage::run(){
         }
     }
 
+    m_timer->set_state(false);
     storage_read_thread_close();
     storage_write_thread_close();
+    storage_aof_release();
 }
 
 int Storage::SetFdNonblock(int fd){

@@ -1,5 +1,21 @@
 #include "storage_timewheel.h"
 
+TimerWheel* TimerWheel::timer = nullptr;
+
+TimerWheel* TimerWheel::get_instance(){
+    if(!timer) {
+        timer = new TimerWheel();
+    }
+    return timer;
+}
+
+void TimerWheel::dstory_instance(){
+    if(timer) {
+        delete timer;
+        timer = nullptr;
+    }
+}
+
 timer_node_t::timer_node_t(){
     next = nullptr;
     expiration_time = 0;

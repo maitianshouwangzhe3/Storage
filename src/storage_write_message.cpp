@@ -1,6 +1,7 @@
 #include "storage_write_message.h"
 #include "storage.h"
 #include "storage_epoller.h"
+#include "storage_memory_pool.h"
 #include <stdint.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -38,11 +39,11 @@ void* storage_write_message(void* arg){
 }
 
 void storage_send(storage_message* q){
-    size_t ret = send(q->fd, q->buf, strlen(q->buf), 0);
+    size_t ret = send(q->fd, *q->buf, strlen(*q->buf), 0);
     if(ret < 0) {
 
     }
-    memset(q->buf, 0, sizeof(q->buf));
+    memset(*q->buf, 0, storage_get_memory_node_size((void**)q->buf));
 }
 
 void storage_insert_write_message(storage_message* q){

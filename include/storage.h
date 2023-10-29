@@ -17,7 +17,7 @@
 
 class Storage{
 public:
-    Storage(int pthrad_size = 8, int port_size = 10, int mode = -1);
+    Storage(int pthrad_size = 8, int port_size = 1, int mode = -1);
     ~Storage();
    
     void run();

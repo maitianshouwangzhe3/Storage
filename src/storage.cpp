@@ -6,6 +6,7 @@
 #include "storage_grammar_parser.h"
 #include "storage_write_message.h"
 #include "storage_read_message.h"
+#include "storage_memory_pool.h"
 #include "storage_aof.h"
 
 #include <fcntl.h>       // fcntl(
@@ -33,13 +34,14 @@ Storage::Storage(int pthrad_size, int port_size, int mode){
     }
 
     InitEventMode_(mode);
-
+    storage_memory_init();
 }
 
 Storage::~Storage(){
     PthreadPool::DestroyInstance();
     Epoller::DstroyInstance(); 
     TimerWheel::dstory_instance();
+    storage_memory_dstory();
 
     m_timer = nullptr;
 
@@ -120,7 +122,7 @@ void Storage::run(){
 
     storage_rq_init();
     storage_wq_init();
-    storage_init_data_persistence();
+    //storage_init_data_persistence();
     thread_pool->push(std::bind(&Storage::run_timer, this));
 
     while(!isClose){
@@ -145,7 +147,7 @@ void Storage::run(){
     m_timer->set_state(false);
     storage_read_thread_close();
     storage_write_thread_close();
-    storage_aof_release();
+    //storage_aof_release();
 }
 
 int Storage::SetFdNonblock(int fd){

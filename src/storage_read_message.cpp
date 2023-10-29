@@ -6,6 +6,7 @@
 #include "storage_avltree.h"
 #include "storage_orderedlist.h"
 #include "storage_write_message.h"
+#include "storage_memory_pool.h"
 #include "storage.h"
 #include <string.h>
 #include <stdint.h>
@@ -73,8 +74,8 @@ static void storage_set(storage_message* q){
             hashtable_add(res->get_hash_resource(), &ent->node);
         }
     }
-    memset(q->buf, 0, sizeof(q->buf));
-    strcpy(q->buf, OK);
+    memset(*q->buf, 0, storage_get_memory_node_size((void**)q->buf));
+    strcpy(*q->buf, OK);
 }
 
 static void storage_get(storage_message* q){
@@ -88,10 +89,10 @@ static void storage_get(storage_message* q){
         hashtable_node* hnode = hashtable_find(res->get_hash_resource(), &node.node, &hash_cmp);
         if(hnode){
             const char* data = container_of(hnode, entry_hashtable, node)->value.data();
-            strcpy(q->buf, data);
+            strcpy(*q->buf, data);
             return;
         }
-        strcpy(q->buf, null);
+        strcpy(*q->buf, null);
     }
 }
 
@@ -108,7 +109,7 @@ static void storage_del(storage_message* q){
             delete container_of(hnode, entry_hashtable, node);
         }
 
-        strcpy(q->buf, OK);
+        strcpy(*q->buf, OK);
     }
 }
 
@@ -118,7 +119,7 @@ static void storage_insert(storage_message* q){
         q->list_kv = q->list_kv->next;
         avl_add(res->get_avl_resource(), atoi(cur->key), cur->value);
     }
-    strcpy(q->buf, OK);
+    strcpy(*q->buf, OK);
 }
 
 static void storage_zget(storage_message* q){
@@ -126,18 +127,18 @@ static void storage_zget(storage_message* q){
         auto cur = q->list_kv;
         q->list_kv = q->list_kv->next;
         if(!res->get_avl_resource()->root){
-            strcpy(q->buf, null);
+            strcpy(*q->buf, null);
             return;
         }
 
         avl_node* tar = avl_fix(res->get_avl_resource()->root);
         if(tar){
             const char* data = container_of(tar, Data_int, node)->key.data();
-            strcpy(q->buf, data);
+            strcpy(*q->buf, data);
             return;
         }
 
-        strcpy(q->buf, null);
+        strcpy(*q->buf, null);
     }
 }
 
@@ -146,11 +147,11 @@ static void storage_zdel(storage_message* q){
         auto cur = q->list_kv;
         q->list_kv = q->list_kv->next;
         if(avl_delete(res->get_avl_resource(), atoi(cur->key))){
-            strcpy(q->buf, OK);
+            strcpy(*q->buf, OK);
             return;
         }
     }
-    strcpy(q->buf, null);
+    strcpy(*q->buf, null);
 }
 
 static void storage_zset(storage_message* q){
@@ -175,7 +176,7 @@ static void storage_zset(storage_message* q){
         }
 
         orderedlist_add(node->pzset, cur->value, strlen(cur->value), (double)atoi(cur->key));
-        strcpy(q->buf, OK);
+        strcpy(*q->buf, OK);
     }
 }
 
@@ -186,12 +187,12 @@ static void storage_ztroy(storage_message* q){
         entry_zset* ent = nullptr;
         if(expect_zset(cur->key, &ent)){
             if(orderedlist_pop(ent->pzset, cur->key, strlen(cur->key))){
-            strcpy(q->buf, OK);
+            strcpy(*q->buf, OK);
             return;
             }
         } 
 
-        strcpy(q->buf, null);
+        strcpy(*q->buf, null);
     }
 }
 
@@ -208,31 +209,31 @@ static void storage_query(storage_message* q){
         {   
             if(!str2dbl(cur->key, score))
             {
-                strcpy(q->buf, EXPECT_FP_NUMBER);
+                strcpy(*q->buf, EXPECT_FP_NUMBER);
                 return;
             }
         
             if(!str2int(q->limit1, offset))
             {
-                strcpy(q->buf, EXPECT_INT);
+                strcpy(*q->buf, EXPECT_INT);
                 return;
             }
 
             if(!str2int(q->limit2, limit))
             {
-                strcpy(q->buf, EXPECT_INT);
+                strcpy(*q->buf, EXPECT_INT);
                 return;
             }
         
             if(!expect_zset(q->key, &ent))
             {
-                strcpy(q->buf, null);
+                strcpy(*q->buf, null);
                 return;
             }
 
             if(limit <= 0)
             {
-                strcpy(q->buf, null);
+                strcpy(*q->buf, null);
                 return;
             }
         }
@@ -249,10 +250,10 @@ static void storage_query(storage_message* q){
                 znode = container_of(avl_offset(&znode->tree, +1), zset_node, tree);
                 n += 1;
             }
-            strcpy(q->buf, tmp.data());
+            strcpy(*q->buf, tmp.data());
             return;
         }
-        strcpy(q->buf, null);
+        strcpy(*q->buf, null);
     }
 }
 
@@ -287,14 +288,14 @@ static void storage_select(storage_message* q){
             storage_query(q);
             break;
         case PING:
-            strcpy(q->buf, PANG);
+            strcpy(*q->buf, PANG);
             break;
         case QUIT:
-            strcpy(q->buf, "Bey");
+            strcpy(*q->buf, "Bey");
             Storage::set_isClose();
             break;
     default:
-        strcpy(q->buf, null);
+        strcpy(*q->buf, null);
         break;
     }
 }

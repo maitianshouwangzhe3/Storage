@@ -16,7 +16,7 @@ $(target) : $(OBJ)
 	$(CXX) $(OBJ) -o $(DIR_BIN)$(target) -g $(FALG)
 
 $(DIR_OBJ)%.o : $(DIR_SRC)%.cpp
-	$(CXX) -c $< -o $@ -g $(FALG)
+	$(CXX) -c $< -o $@ -g -I$(DIR_ROOT)/include
 
 .PHONY : clean
 clean:

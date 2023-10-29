@@ -1,17 +1,20 @@
 CXX ?= g++
+TARGET = $(filter-out $@,$(MAKECMDGOALS))
 
-DIR_ROOT = $(shell pwd)
+all: $(TARGET)
 
-SRC = $(wildcard $(DIR_SRC)*.cpp)
-OBJ = $(patsubst $(DIR_SRC)%.cpp, $(DIR_OBJ)%.o, $(SRC))
-
-libhistorage.a : $(OBJ)
+static : historage.cpp 
 	ar -rc libhistorage.a $<
+shared : historage.cpp
+	g++ -shared -o libhistorage.so $<
 
-$(DIR_ROOT)%.o : $(DIR_ROOT)%.cpp
-	$(CXX) -c $< -o $@ -g $(FALG)
+shared_lua : historage_lua.c
+	gcc -shared -fPIC -o libhistorage_lua.so $<
 
+%:
+	@echo "make [xxx]" 
 
 .PHONY : clean
 clean:
-	rm *.o
+	rm *.a
+	rm *.so

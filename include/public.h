@@ -123,7 +123,7 @@ struct storage_message{
     char* limit1;
     char* limit2;
     uint32_t time;
-    char buf[256];
+    char** buf;
 
     storage_message();
     ~storage_message();

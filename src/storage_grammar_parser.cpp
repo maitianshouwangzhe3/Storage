@@ -1,5 +1,6 @@
 #include "storage_grammar_parser.h"
 #include "storage_read_message.h"
+#include "storage_memory_pool.h"
 #include "storage_aof.h"
 #include <sys/socket.h>
 #include <netinet/in.h>
@@ -12,7 +13,7 @@
 #include <pthread.h>
 #include <stdio.h>
 
-std::unordered_map<int, storage_message*> message_map;
+static std::unordered_map<int, storage_message*> message_map;
 pthread_mutex_t mtx;
 static std::unordered_map<std::string, type_> hash_map = {
     {"set", type_::SET},
@@ -33,14 +34,15 @@ storage_message::storage_message() {
 }
 
 storage_message::~storage_message(){
-    auto cur = list_kv->next;
     while (list_kv)
     {
+        list_key_value* cur = list_kv->next;
         delete list_kv;
         list_kv = nullptr;
         list_kv = cur;
         cur = cur->next;
     } 
+    storage_free((void**)buf);
 }
 
 storage_message* storage_message_init(uint32_t fd) {
@@ -52,6 +54,12 @@ storage_message* storage_message_init(uint32_t fd) {
     message->key = nullptr;
     message->list_kv = nullptr;
     message->time = 0;
+    message->buf = (char**)storage_malloc((unsigned int)256);
+    if(!message->buf) {
+        delete message;
+        return nullptr;
+    }
+    message_map[fd] = message;
     return message;
 }
 
@@ -64,8 +72,11 @@ list_key_value* storage_message_kv_init(const char* key, const char* value) {
 }
 
 void storage_message_destruction(int fd) {
-    auto message = message_map[fd];
-    message_map.erase(fd);
+    storage_message* message = message_map[fd];
+    message_map[fd] = nullptr;
+    if (message) {
+        delete message;
+    }
     close(fd);
 }
 
@@ -203,17 +214,31 @@ static void grammar_parser(char* buffer, storage_message*  message) {
 }
 
 void storage_grammar_parser(uint32_t fd) {
-    storage_message* q = storage_message_init(fd);
-    ssize_t ret = recv(fd, q->buf, sizeof(q->buf), 0);
+    storage_message* q = nullptr;
+    pthread_mutex_lock(&mtx);
+
+    if(message_map[fd] != nullptr) {
+        q = message_map[fd];
+    }
+    else {
+        q = storage_message_init(fd);
+    }
+
+    pthread_mutex_unlock(&mtx);
+    if(!q) {
+        return;
+    }
+    
+    int size = storage_get_memory_node_size((void**)q->buf);
+    ssize_t ret = recv(fd, *q->buf, size, 0);
     if(0 > ret)
     {
         return;
     }
 
-    grammar_parser(q->buf, q);
-    memset(q->buf, 0, sizeof(q->buf));
+    grammar_parser(*(q->buf), q);
+    memset(*(q->buf), 0, storage_get_memory_node_size((void**)(q->buf)));
     pthread_mutex_lock(&mtx);
     storage_insert_read_message(q);
-    message_map[fd] = q;
     pthread_mutex_unlock(&mtx);
 }

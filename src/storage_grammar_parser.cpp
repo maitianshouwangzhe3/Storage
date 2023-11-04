@@ -14,7 +14,7 @@
 #include <stdio.h>
 
 static std::unordered_map<int, storage_message*> message_map;
-pthread_mutex_t mtx;
+static pthread_mutex_t mtx;
 static std::unordered_map<std::string, type_> hash_map = {
     {"set", type_::SET},
     {"get", type_::GET},
@@ -40,9 +40,27 @@ storage_message::~storage_message(){
         delete list_kv;
         list_kv = nullptr;
         list_kv = cur;
-        cur = cur->next;
     } 
     storage_free((void**)buf);
+}
+
+static void message_map_pop(int fd) {
+    pthread_mutex_lock(&mtx);
+    message_map[fd] = nullptr;
+    pthread_mutex_unlock(&mtx);
+}
+
+static void message_map_push(int fd, storage_message* message) {
+    pthread_mutex_lock(&mtx);
+    message_map[fd] = message;
+    pthread_mutex_unlock(&mtx);
+}
+
+static storage_message* message_map_get(int index) {
+    pthread_mutex_lock(&mtx);
+    storage_message* tmp = message_map[index];
+    pthread_mutex_unlock(&mtx);
+    return tmp;
 }
 
 storage_message* storage_message_init(uint32_t fd) {
@@ -59,7 +77,7 @@ storage_message* storage_message_init(uint32_t fd) {
         delete message;
         return nullptr;
     }
-    message_map[fd] = message;
+    message_map_push(fd, message);
     return message;
 }
 
@@ -73,7 +91,7 @@ list_key_value* storage_message_kv_init(const char* key, const char* value) {
 
 void storage_message_destruction(int fd) {
     storage_message* message = message_map[fd];
-    message_map[fd] = nullptr;
+    message_map_pop(fd);
     if (message) {
         delete message;
     }
@@ -215,16 +233,14 @@ static void grammar_parser(char* buffer, storage_message*  message) {
 
 void storage_grammar_parser(uint32_t fd) {
     storage_message* q = nullptr;
-    pthread_mutex_lock(&mtx);
 
     if(message_map[fd] != nullptr) {
-        q = message_map[fd];
+        q = message_map_get(fd);
     }
     else {
         q = storage_message_init(fd);
     }
 
-    pthread_mutex_unlock(&mtx);
     if(!q) {
         return;
     }

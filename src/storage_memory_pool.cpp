@@ -3,7 +3,8 @@
 #include <stdio.h>
 #include <memory>
 #include <memory.h>
-
+#include <pthread.h> 
+static pthread_mutex_t mtx;
 
 static memory_pool* mp = nullptr;
 
@@ -54,6 +55,7 @@ void** storage_malloc(unsigned int size) {
         cur = mp;
     }
 
+    pthread_mutex_lock(&mtx);
     memory_node* val = cur->data;
     while(cur && cur->mask <= size) {
         cur = cur->next;
@@ -68,12 +70,14 @@ void** storage_malloc(unsigned int size) {
     if(val) {
         cur->data = val->next;
         val->next = nullptr;
+        pthread_mutex_unlock(&mtx);
         return &val->data;
     }
 
     try {
         memory_pool* t = new memory_pool();
         if(!t) {
+            pthread_mutex_unlock(&mtx);
             return nullptr;
         }
         t->mask = size;
@@ -86,6 +90,7 @@ void** storage_malloc(unsigned int size) {
 
         val = (memory_node*)malloc(sizeof(memory_node));
         if(!val) {
+            pthread_mutex_unlock(&mtx);
             return nullptr;
         }
 
@@ -96,13 +101,15 @@ void** storage_malloc(unsigned int size) {
         val->data = tmp;
         if(!val->data) {
             free(val);
+            pthread_mutex_unlock(&mtx);
             return nullptr;
         }
     }catch(...) {
         printf("Memory allocation failed\n");
+        pthread_mutex_unlock(&mtx);
         return nullptr;
     }
-    
+    pthread_mutex_unlock(&mtx);
     return &val->data;
 }
 
@@ -111,6 +118,7 @@ void storage_free(void** node) {
         return;
     }
 
+    pthread_mutex_lock(&mtx);
     try {
         memory_node* tmp = container_of(node, memory_node, data);
         memory_pool* cur = mp;
@@ -121,6 +129,7 @@ void storage_free(void** node) {
         if(!cur) {
             free(tmp->data);
             free(tmp);
+            pthread_mutex_unlock(&mtx);
             return;
         }
 
@@ -128,8 +137,10 @@ void storage_free(void** node) {
         cur->data = tmp;
     }
     catch(...) {
+        pthread_mutex_unlock(&mtx);
         printf("storage_free error\n");
     }
+    pthread_mutex_unlock(&mtx);
 }
 
 int storage_get_memory_node_size(void** node) {

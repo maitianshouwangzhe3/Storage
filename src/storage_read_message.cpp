@@ -79,21 +79,22 @@ static void storage_set(storage_message* q){
 }
 
 static void storage_get(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
-        entry_hashtable node;
-        node.key = cur->key;
-        node.node.code = str_hash((const uint8_t*)node.key.data(), node.key.length());
-
-        hashtable_node* hnode = hashtable_find(res->get_hash_resource(), &node.node, &hash_cmp);
-        if(hnode){
-            const char* data = container_of(hnode, entry_hashtable, node)->value.data();
-            strcpy(*q->buf, data);
-            return;
-        }
+    if(!q->list_kv) {
         strcpy(*q->buf, null);
+        return;
     }
+
+    entry_hashtable node;
+    node.key = q->list_kv->key;
+    node.node.code = str_hash((const uint8_t*)node.key.data(), node.key.length());
+
+    hashtable_node* hnode = hashtable_find(res->get_hash_resource(), &node.node, &hash_cmp);
+    if(hnode){
+        const char* data = container_of(hnode, entry_hashtable, node)->value.data();
+        strcpy(*q->buf, data);
+        return;
+    }
+    strcpy(*q->buf, null);
 }
 
 static void storage_del(storage_message* q){
@@ -250,10 +251,10 @@ static void storage_query(storage_message* q){
                 znode = container_of(avl_offset(&znode->tree, +1), zset_node, tree);
                 n += 1;
             }
-            strcpy(*q->buf, tmp.data());
+            strcpy(*(q->buf), tmp.data());
             return;
         }
-        strcpy(*q->buf, null);
+        strcpy(*(q->buf), null);
     }
 }
 

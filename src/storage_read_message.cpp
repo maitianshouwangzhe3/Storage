@@ -331,6 +331,7 @@ void* storage_read_message(void* arg){
             usleep(0);
         }
     }
+    return nullptr;
 }
 
 void storage_read_thread_close(){

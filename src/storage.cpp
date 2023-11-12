@@ -204,4 +204,5 @@ void Storage::run_timer(){
 
 bool Storage::set_isClose(){
     isClose = true;
+    return isClose;
 }

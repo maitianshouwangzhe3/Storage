@@ -36,6 +36,7 @@ void* storage_write_message(void* arg){
             usleep(0);
         }
     }
+    return nullptr;
 }
 
 void storage_send(storage_message* q){

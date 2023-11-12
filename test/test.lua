@@ -153,22 +153,22 @@ local datasize = 100000
 local clientsize = 10000
 
 
-fd = storage.storage_init("192.168.138.135", 8000)
+fd = storage.storage_init("192.168.138.139", 8000)
 print("开始准备数据...")
-manufacturing_data("set aaaaa", fd, datasize)
+manufacturing_data("set aaaaaaa", fd, datasize)
 manufacturing_data_zset(fd, datasize)
 storage.storage_distory(fd)
 
 print("开始测试get命令...")
 local time1 = storage.storage_get_now_time()
-storage_concurrency_test("192.168.138.135", 8000, clientsize, "get aaaaa", 5)
+storage_concurrency_test("192.168.138.139", 8000, clientsize, "get aaaaaaa", 10)
 local time2 = storage.storage_get_now_time()
 --tps直接用单词请求最大耗时算
-print("在客户端数量为" .. clientsize .. "情况下get请求最大耗时 " .. times_get .. "ms " .. "数据量 " .. datasize .. " TPS=" .. (1000 / times_get))
+print("客户端数量为" .. clientsize .. " 总共耗时 " .. time2 - time1 .. " get请求最大耗时 " .. times_get .. "ms " .. "数据量 " .. datasize .. " TPS=" .. (1000 / times_get))
 
 print("开始测试query命令...")
 time1 = storage.storage_get_now_time()
-storage_concurrency_test_zset("192.168.138.135", 8000, clientsize, zsetkey, 10)
+storage_concurrency_test_zset("192.168.138.139", 8000, clientsize, zsetkey, 10)
 time2 = storage.storage_get_now_time()
-print("在客户端数量为" .. clientsize .. "情况下query请求最大耗时 " .. times_query .. "ms " .. "数据量 " .. datasize .. " TPS=" ..  (1000 / times_query))
+print("客户端数量为" .. clientsize .. " 总共耗时 " .. time2 - time1 .. " query请求最大耗时 " .. times_query .. "ms " .. "数据量 " .. datasize .. " TPS=" ..  (1000 / times_query))
 

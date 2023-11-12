@@ -20,6 +20,6 @@ $(DIR_OBJ)%.o : $(DIR_SRC)%.cpp
 
 .PHONY : clean
 clean:
-	rm $(DIR_OBJ)*
-	rm $(DIR_BIN)*
+	rm $(DIR_OBJ)*.o
+	rm $(DIR_BIN)storage
 	

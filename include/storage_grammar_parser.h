@@ -3,7 +3,7 @@
 #include "public.h"
 
 
-storage_message* storage_message_init(uint32_t fd);
+storage_message** storage_message_init(uint32_t fd);
 
 list_key_value* storage_message_kv_init(const char* key, const char* value);
 

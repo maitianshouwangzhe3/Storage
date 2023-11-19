@@ -13,6 +13,7 @@
 #include <vector>
 #include <unordered_set>
 #include <unordered_map>
+#include <set>
 
 
 class Storage{
@@ -23,6 +24,12 @@ public:
     void run();
 
     static bool set_isClose();
+
+    static bool get_fd_status(int fd);
+
+    static bool delete_fd_status(int fd);
+
+    static bool set_fd_status(int fd);
 
 private:
     //初始化sock
@@ -44,15 +51,16 @@ private:
     void run_timer();
 
 private:
-    uint32_t                listenEvent_;
-    uint32_t                connEvent_;            
-    static bool             isClose;
-    PthreadPool*            thread_pool;
-    Epoller*                epoller_;
-    TimerWheel*             m_timer;
-    spinlock*               lock;
-    std::vector<int>        port_;
-    std::unordered_set<int> listenFd_;    
+    uint32_t                   listenEvent_;
+    uint32_t                   connEvent_;            
+    static bool                isClose;
+    PthreadPool*               thread_pool;
+    Epoller*                   epoller_;
+    TimerWheel*                m_timer;
+    spinlock*                  lock;
+    std::vector<int>           port_;
+    std::unordered_set<int>    listenFd_;
+    static std::set<int>       mfd_status;
 };
 
 #endif

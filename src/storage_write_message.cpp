@@ -20,6 +20,11 @@ void storage_wq_init(){
     pthread_detach(pid);
 }
 
+void storage_del_message(storage_message** q) {
+    storage_free((void**)((*q)->buf));
+    storage_free((void**)(q));
+}
+
 void* storage_write_message(void* arg){
     while(true){
         if(wq.size > 0){
@@ -27,7 +32,8 @@ void* storage_write_message(void* arg){
             wq.q.pop();
             wq.size--;
             storage_send(q);
-            Epoller::getinstance()->ModFd(q->fd, EPOLLONESHOT | EPOLLRDHUP| EPOLLET | EPOLLIN);
+            Epoller::getinstance()->ModFd((*q)->fd, EPOLLONESHOT | EPOLLRDHUP| EPOLLET | EPOLLIN);
+            storage_del_message(q);
         }
         else if(isClose){
             break;
@@ -39,15 +45,27 @@ void* storage_write_message(void* arg){
     return nullptr;
 }
 
-void storage_send(storage_message* q){
-    size_t ret = send(q->fd, *q->buf, strlen(*q->buf), 0);
-    if(ret < 0) {
-
-    }
-    memset(*q->buf, 0, storage_get_memory_node_size((void**)q->buf));
+void storage_send(storage_message** q){
+    if(Storage::get_fd_status((*q)->fd)) {
+        int len = strlen(*((*q)->buf));
+        int buflen = storage_get_memory_node_size((void**)((*q)->buf));
+        size_t ret = -1;
+        if (buflen - len > 1) {
+            ret = send((*q)->fd, *((*q)->buf), len + 2, 0);
+        }
+        else {
+            ret = send((*q)->fd, *(*q)->buf, len, 0);
+        }
+    
+        if(ret < 0) {
+            char err[] = "error";
+            ret = send((*q)->fd, err, strlen(err), 0);
+        }
+        memset(*((*q)->buf), 0, buflen);
+    } 
 }
 
-void storage_insert_write_message(storage_message* q){
+void storage_insert_write_message(storage_message** q){
     wq.q.push(q);
     wq.size++;
 }

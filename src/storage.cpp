@@ -20,8 +20,11 @@
 #include <stdio.h>
 #include <math.h>
 #include <memory>
+#include <mutex>
 
+static pthread_mutex_t mtx;
 bool Storage::isClose = false;
+std::set<int> Storage::mfd_status;
 
 Storage::Storage(int pthrad_size, int port_size, int mode){
     thread_pool = PthreadPool::GetInstance();
@@ -35,6 +38,7 @@ Storage::Storage(int pthrad_size, int port_size, int mode){
 
     InitEventMode_(mode);
     storage_memory_init();
+    pthread_mutex_init(&mtx, NULL);
 }
 
 Storage::~Storage(){
@@ -164,7 +168,8 @@ void Storage::DealListen_(int listenFd){
             return;
         }
         AddClient_(fd, addr);
-    }while(listenEvent_ & EPOLLET);
+        set_fd_status(fd);
+    }while(listenEvent_ & EPOLLET);   
 }
 
 void Storage::AddClient_(int fd, sockaddr_in addr){
@@ -205,4 +210,32 @@ void Storage::run_timer(){
 bool Storage::set_isClose(){
     isClose = true;
     return isClose;
+}
+
+bool Storage::get_fd_status(int fd) {
+    bool status = false;
+    pthread_mutex_lock(&mtx);
+    if(mfd_status.count(fd) > 0) {
+        status = true;
+    }
+    pthread_mutex_unlock(&mtx);
+    return status;
+}
+
+bool Storage::delete_fd_status(int fd) {
+    pthread_mutex_lock(&mtx);
+    if(mfd_status.count(fd) > 0) {
+        mfd_status.erase(fd);
+    }
+    pthread_mutex_unlock(&mtx);
+    return true;
+}
+
+bool Storage::set_fd_status(int fd) {
+    pthread_mutex_lock(&mtx);
+    if(mfd_status.count(fd) == 0) {
+        mfd_status.insert(fd);
+    }
+    pthread_mutex_unlock(&mtx);
+    return true;
 }

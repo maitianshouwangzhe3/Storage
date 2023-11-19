@@ -54,10 +54,10 @@ static bool str2int(char* s, int64_t &out){
     return endp == s + strlen(s);
 }
 
-static void storage_set(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_set(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         entry_hashtable node;
         node.key = cur->key;
         node.node.code = str_hash((const uint8_t*)node.key.data(), node.key.length());
@@ -74,33 +74,33 @@ static void storage_set(storage_message* q){
             hashtable_add(res->get_hash_resource(), &ent->node);
         }
     }
-    memset(*q->buf, 0, storage_get_memory_node_size((void**)q->buf));
-    strcpy(*q->buf, OK);
+    
+    sprintf(*((*q)->buf), "%s%s", OK, END);
 }
 
-static void storage_get(storage_message* q){
-    if(!q->list_kv) {
-        strcpy(*q->buf, null);
+static void storage_get(storage_message** q){
+    if(!(*q)->list_kv) {
+        sprintf(*((*q)->buf), "%s%s", null, END);
         return;
     }
 
     entry_hashtable node;
-    node.key = q->list_kv->key;
+    node.key = (*q)->list_kv->key;
     node.node.code = str_hash((const uint8_t*)node.key.data(), node.key.length());
 
     hashtable_node* hnode = hashtable_find(res->get_hash_resource(), &node.node, &hash_cmp);
     if(hnode){
         const char* data = container_of(hnode, entry_hashtable, node)->value.data();
-        strcpy(*q->buf, data);
+        sprintf(*((*q)->buf), "%s%s", data, END);
         return;
     }
-    strcpy(*q->buf, null);
+    sprintf(*((*q)->buf), "%s%s", null, END);
 }
 
-static void storage_del(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_del(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         entry_hashtable node;
         node.key = cur->key;
         node.node.code = str_hash((const uint8_t*)node.key.data(), node.key.length());
@@ -110,57 +110,57 @@ static void storage_del(storage_message* q){
             delete container_of(hnode, entry_hashtable, node);
         }
 
-        strcpy(*q->buf, OK);
+        sprintf(*((*q)->buf), "%s%s", OK, END);
     }
 }
 
-static void storage_insert(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_insert(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         avl_add(res->get_avl_resource(), atoi(cur->key), cur->value);
     }
-    strcpy(*q->buf, OK);
+    sprintf(*((*q)->buf), "%s%s", OK, END);
 }
 
-static void storage_zget(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_zget(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         if(!res->get_avl_resource()->root){
-            strcpy(*q->buf, null);
+            sprintf(*((*q)->buf), "%s%s", null, END);
             return;
         }
 
         avl_node* tar = avl_fix(res->get_avl_resource()->root);
         if(tar){
             const char* data = container_of(tar, Data_int, node)->key.data();
-            strcpy(*q->buf, data);
+            sprintf(*((*q)->buf), "%s%s", data, END);
             return;
         }
 
-        strcpy(*q->buf, null);
+        sprintf(*((*q)->buf), "%s%s", null, END);
     }
 }
 
-static void storage_zdel(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_zdel(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         if(avl_delete(res->get_avl_resource(), atoi(cur->key))){
-            strcpy(*q->buf, OK);
+            sprintf(*((*q)->buf), "%s%s", OK, END);
             return;
         }
     }
-    strcpy(*q->buf, null);
+    sprintf(*((*q)->buf), "%s%s", null, END);
 }
 
-static void storage_zset(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_zset(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         entry_zset ent;
-        ent.key = q->key;
+        ent.key = (*q)->key;
         ent.node.code = str_hash((const uint8_t*)ent.key.data(), ent.key.size());
         hashtable_node* hnode = hashtable_find(res->get_orderedlist_hash_resource(), &ent.node, &hash_cmp);
 
@@ -177,30 +177,29 @@ static void storage_zset(storage_message* q){
         }
 
         orderedlist_add(node->pzset, cur->value, strlen(cur->value), (double)atoi(cur->key));
-        strcpy(*q->buf, OK);
+        sprintf(*((*q)->buf), "%s%s", OK, END);
     }
 }
 
-static void storage_ztroy(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_ztroy(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         entry_zset* ent = nullptr;
         if(expect_zset(cur->key, &ent)){
             if(orderedlist_pop(ent->pzset, cur->key, strlen(cur->key))){
-            strcpy(*q->buf, OK);
+            strcpy(*((*q)->buf), OK);
             return;
             }
         } 
-
-        strcpy(*q->buf, null);
+        sprintf(*((*q)->buf), "%s%s", null, END);
     }
 }
 
-static void storage_query(storage_message* q){
-    while(q->list_kv){
-        auto cur = q->list_kv;
-        q->list_kv = q->list_kv->next;
+static void storage_query(storage_message** q){
+    while((*q)->list_kv){
+        auto cur = (*q)->list_kv;
+        (*q)->list_kv = (*q)->list_kv->next;
         entry_zset* ent = nullptr;
         double score = 0;
         const std::string& name = cur->value;
@@ -210,31 +209,31 @@ static void storage_query(storage_message* q){
         {   
             if(!str2dbl(cur->key, score))
             {
-                strcpy(*q->buf, EXPECT_FP_NUMBER);
+                sprintf(*((*q)->buf), "%s%s", EXPECT_FP_NUMBER, END);
                 return;
             }
         
-            if(!str2int(q->limit1, offset))
+            if(!str2int((*q)->limit1, offset))
             {
-                strcpy(*q->buf, EXPECT_INT);
+                sprintf(*((*q)->buf), "%s%s", EXPECT_INT, END);
                 return;
             }
 
-            if(!str2int(q->limit2, limit))
+            if(!str2int((*q)->limit2, limit))
             {
-                strcpy(*q->buf, EXPECT_INT);
+                sprintf(*((*q)->buf), "%s%s", EXPECT_INT, END);
                 return;
             }
         
-            if(!expect_zset(q->key, &ent))
+            if(!expect_zset((*q)->key, &ent))
             {
-                strcpy(*q->buf, null);
+                sprintf(*((*q)->buf), "%s%s", null, END);
                 return;
             }
 
             if(limit <= 0)
             {
-                strcpy(*q->buf, null);
+                sprintf(*((*q)->buf), "%s%s", null, END);
                 return;
             }
         }
@@ -251,15 +250,15 @@ static void storage_query(storage_message* q){
                 znode = container_of(avl_offset(&znode->tree, +1), zset_node, tree);
                 n += 1;
             }
-            strcpy(*(q->buf), tmp.data());
+            sprintf(*((*q)->buf), "%s%s", tmp.data(), END);
             return;
         }
-        strcpy(*(q->buf), null);
+        sprintf(*((*q)->buf), "%s%s", null, END);
     }
 }
 
-static void storage_select(storage_message* q){
-    switch (q->cmd)
+static void storage_select(storage_message** q){
+    switch ((*q)->cmd)
     {
         case SET:
             storage_set(q);
@@ -289,23 +288,23 @@ static void storage_select(storage_message* q){
             storage_query(q);
             break;
         case PING:
-            strcpy(*q->buf, PANG);
+            sprintf(*((*q)->buf), "%s%s", PANG, END);
             break;
         case QUIT:
-            strcpy(*q->buf, "Bey");
+            sprintf(*((*q)->buf), "%s%s", "Bey", END);
             Storage::set_isClose();
             break;
     default:
-        strcpy(*q->buf, null);
+        sprintf(*((*q)->buf), "%s%s", null, END);
         break;
     }
 }
 
-static void storage_task(storage_message* q){
+static void storage_task(storage_message** q){
     storage_select(q);
 }
 
-void storage_insert_read_message(storage_message* q){
+void storage_insert_read_message(storage_message** q){
     rq.q.push(q);
     rq.size++;
 }

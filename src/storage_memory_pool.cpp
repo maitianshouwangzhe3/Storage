@@ -8,7 +8,21 @@ static pthread_mutex_t mtx;
 
 static memory_pool* mp = nullptr;
 
-bool hasOnlyOneBit(unsigned int n) {
+static unsigned int alignUpToPowerOfTwo(unsigned int num) {  
+    if (num == 0) {  
+        return 0;  
+    }  
+    num--;  
+    num |= num >> 1;  
+    num |= num >> 2;  
+    num |= num >> 4;  
+    num |= num >> 8;  
+    num |= num >> 16;  
+    num++;  
+    return num;  
+} 
+
+static bool hasOnlyOneBit(unsigned int n) {
     return (n & (n - 1)) == 0;
 }
 
@@ -21,7 +35,7 @@ bool storage_memory_init() {
         
         mp->data = nullptr;
         mp->next = nullptr;
-        mp->mask = 1 << 7;
+        mp->mask = 1 << 5;
     }
     return true;
 }
@@ -43,15 +57,16 @@ void storage_memory_dstory() {
 }
 
 void** storage_malloc(unsigned int size) {
+    //向上对齐最近的2的幂
     if(!hasOnlyOneBit(size)) {
-        return nullptr;
+        size = alignUpToPowerOfTwo(size);
     }
 
     memory_pool* cur = mp;
 
-    //最小分配单位128
-    if(size < (1 << 7)) {
-        size = 1 << 7;
+    //最小分配单位32
+    if(size < (1 << 5)) {
+        size = 1 << 5;
         cur = mp;
     }
 

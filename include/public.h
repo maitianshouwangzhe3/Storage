@@ -12,6 +12,7 @@
 #define ERR "error"
 #define EXPECT_INT "expect_int"
 #define EXPECT_FP_NUMBER "expect fp number"
+#define END "\r\n"
 
 extern "C"{
 #define container_of(ptr, type, member) ({                  \
